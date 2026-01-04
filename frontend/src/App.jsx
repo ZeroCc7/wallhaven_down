@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, message, ConfigProvider, theme, Switch, Space } from 'antd';
-import { 
-  SettingOutlined, 
-  LogoutOutlined, 
-  BulbOutlined, 
+import {
+  SettingOutlined,
+  LogoutOutlined,
+  BulbOutlined,
   BulbFilled,
-  GithubOutlined
+  GithubOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import Login from './pages/Login';
 import Config from './pages/Config';
+import Preview from './pages/Preview';
 import 'antd/dist/reset.css';
 import './App.css';
 
@@ -40,11 +42,17 @@ const AppContent = ({ isDarkMode, setIsDarkMode }) => {
       onClick: () => navigate('/'),
     },
     {
+      key: '/preview',
+      icon: <EyeOutlined />,
+      label: '随机预览',
+      onClick: () => navigate('/preview'),
+    },
+    ...(isAuthenticated ? [{
       key: 'logout',
       icon: <LogoutOutlined />,
       label: '退出登录',
       onClick: handleLogout,
-    },
+    }] : []),
   ];
 
   return (
@@ -64,26 +72,24 @@ const AppContent = ({ isDarkMode, setIsDarkMode }) => {
         flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div className="logo" style={{ 
-            color: isDarkMode ? '#fff' : '#1890ff', 
-            fontSize: '18px', 
+          <div style={{
+            color: isDarkMode ? '#fff' : '#1890ff',
+            fontSize: '18px',
             fontWeight: 'bold',
             marginRight: '48px',
             display: 'flex',
             alignItems: 'center',
             cursor: 'pointer'
-          }} onClick={() => navigate('/')}>
+          }} onClick={() => navigate(isAuthenticated ? '/' : '/preview')}>
             <SettingOutlined style={{ marginRight: '8px' }} />
             Wallhaven Downloader
           </div>
-          {isAuthenticated && (
-            <Menu 
-              mode="horizontal" 
-              selectedKeys={[location.pathname]} 
-              items={menuItems}
-              style={{ borderBottom: 'none', background: 'transparent', minWidth: '300px' }}
-            />
-          )}
+          <Menu
+            mode="horizontal"
+            selectedKeys={[location.pathname]}
+            items={menuItems}
+            style={{ borderBottom: 'none', background: 'transparent', minWidth: '300px' }}
+          />
         </div>
         
         <Space size="middle">
@@ -102,28 +108,37 @@ const AppContent = ({ isDarkMode, setIsDarkMode }) => {
         </Space>
       </Header>
 
-      <Content style={{ 
-        padding: '24px',
+      <Content style={{
+        padding: location.pathname === '/preview' ? 0 : '24px',
         flex: '1 0 auto',
-        background: isDarkMode ? '#000' : '#f0f2f5'
+        background: location.pathname === '/preview' ? '#000' : (isDarkMode ? '#000' : '#f0f2f5'),
+        position: 'relative'
       }}>
-        <div style={{ 
-          maxWidth: '1400px', 
-          margin: '0 auto',
-        }}>
+        {location.pathname === '/preview' ? (
           <Routes>
-            <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
-            <Route
-              path="/"
-              element={isAuthenticated ? <Config /> : <Navigate to="/login" />}
-            />
+            <Route path="/preview" element={<Preview />} />
           </Routes>
-        </div>
+        ) : (
+          <div style={{
+            maxWidth: '1400px',
+            margin: '0 auto',
+          }}>
+            <Routes>
+              <Route path="/login" element={<Login setIsAuthenticated={setIsAuthenticated} />} />
+              <Route
+                path="/"
+                element={isAuthenticated ? <Config /> : <Navigate to="/login" />}
+              />
+            </Routes>
+          </div>
+        )}
       </Content>
-      
-      <Footer style={{ textAlign: 'center', padding: '24px 50px', flexShrink: 0 }}>
-        Wallhaven 壁纸下载器 ©2025 Created by Gemini & Ant Design
-      </Footer>
+
+      {location.pathname !== '/preview' && (
+        <Footer style={{ textAlign: 'center', padding: '24px 50px', flexShrink: 0 }}>
+          Wallhaven 壁纸下载器 ©2025 Created by Gemini & Ant Design
+        </Footer>
+      )}
     </Layout>
   );
 };

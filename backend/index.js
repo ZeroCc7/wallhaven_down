@@ -339,15 +339,63 @@ app.get('/api/zip', authenticate, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Random wallpaper preview (no authentication required)
+app.get('/api/random-wallpaper', async (req, res) => {
+  try {
+    if (!await fs.pathExists(DOWNLOAD_BASE_DIR)) {
+      return res.status(404).json({ message: '暂无已下载的壁纸' });
+    }
+
+    const folders = await fs.readdir(DOWNLOAD_BASE_DIR);
+    const allImages = [];
+
+    for (const folder of folders) {
+      try {
+        const folderPath = path.join(DOWNLOAD_BASE_DIR, folder);
+        const stats = await fs.stat(folderPath);
+        if (stats.isDirectory()) {
+          const files = await fs.readdir(folderPath);
+          const images = files
+            .filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f))
+            .map(f => ({
+              url: `/downloads/${folder}/${f}`,
+              folder: folder,
+              name: f
+            }));
+          allImages.push(...images);
+        }
+      } catch (err) {
+        console.error(`读取文件夹失败 ${folder}:`, err);
+      }
+    }
+
+    if (allImages.length === 0) {
+      return res.status(404).json({ message: '暂无已下载的壁纸' });
+    }
+
+    const randomImage = allImages[Math.floor(Math.random() * allImages.length)];
+
+    res.json({
+      url: randomImage.url,
+      total: allImages.length,
+      folder: randomImage.folder,
+      name: randomImage.name
+    });
+  } catch (error) {
+    console.error('获取随机壁纸失败:', error);
+    res.status(500).json({ message: '获取随机壁纸失败', error: error.message });
+  }
 });
 
 // For frontend routing support in production (SPA)
 if (fs.pathExistsSync(FRONTEND_DIST_DIR)) {
-  app.get('*', (req, res) => {
+  app.get('*path', (req, res) => {
     if (!req.path.startsWith('/api') && !req.path.startsWith('/downloads')) {
       res.sendFile(path.join(FRONTEND_DIST_DIR, 'index.html'));
     }
   });
 }
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});

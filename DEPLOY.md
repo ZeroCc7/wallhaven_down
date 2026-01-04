@@ -5,9 +5,41 @@
 ## 1. 准备工作
 
 确保您的服务器已安装：
+
 - **Node.js** (推荐 v18+)
 - **npm** 或 **yarn**
 - **PM2** (用于进程守护，推荐) `npm install -g pm2`
+
+### 如何在 Linux 上安装 Node.js
+
+#### 方法 A：使用 NVM (推荐，方便管理版本)
+
+```bash
+# 1. 安装 NVM
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+
+# 2. 安装 Node.js v18
+nvm install 18
+nvm use 18
+node -v # 验证安装
+```
+
+#### 方法 B：Ubuntu/Debian (使用 NodeSource)
+
+```bash
+# 安装 Node.js v18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+#### 方法 C：CentOS/RHEL
+
+```bash
+# 安装 Node.js v18
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+sudo yum install -y nodejs
+```
 
 ## 2. 编译前端
 
@@ -83,3 +115,5 @@ server {
 1. **页面空白**：确保 `frontend/dist` 文件夹存在，且与 `backend` 目录层级正确（`backend` 的上一级应能找到 `frontend/dist`）。
 2. **下载失败**：请检查服务器是否能正常访问 `wallhaven.cc`，必要时在 `.env` 中配置 `DEFAULT_PROXY`。
 3. **权限问题**：确保运行 Node.js 的用户对 `DOWNLOAD_DIR` 有读写权限。
+
+

@@ -535,7 +535,7 @@ const Config = () => {
                       cover={
                         <Image
                           alt={img.name}
-                          src={`http://localhost:5000${img.url}`}
+                          src={`${API_BASE_URL}${img.url}`}
                           placeholder={true}
                           style={{ height: '120px', objectFit: 'cover' }}
                         />
