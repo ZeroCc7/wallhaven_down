@@ -37,7 +37,7 @@ const Login = ({ setIsAuthenticated }) => {
       <Card 
          title={<Title level={4} style={{ textAlign: 'center', margin: '12px 0' }}>登录 Wallhaven 下载器</Title>} 
          style={{ width: 400 }}
-         bordered={false}
+         variant="borderless"
        >
         <Form
           name="login"

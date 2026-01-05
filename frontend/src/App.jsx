@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, message, ConfigProvider, theme, Switch, Space } from 'antd';
+import axios from 'axios';
 import {
   SettingOutlined,
   LogoutOutlined,
@@ -26,6 +27,28 @@ const AppContent = ({ isDarkMode, setIsDarkMode }) => {
   useEffect(() => {
     setIsAuthenticated(!!localStorage.getItem('token'));
   }, [location]);
+
+  // 全局响应拦截器，处理登录过期
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          setIsAuthenticated(false);
+          if (location.pathname !== '/login') {
+            navigate('/login');
+            message.error(error.response?.data?.message || '登录已过期，请重新登录');
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [navigate, location.pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, InputNumber, Select, Checkbox, Card, Space, Divider, Typography, Progress, message, Row, Col, Switch, Tooltip, Tabs, List, Image, theme, Empty, Popconfirm } from 'antd';
-import { DownloadOutlined, FileZipOutlined, InfoCircleOutlined, DeleteOutlined, FolderOpenOutlined, EyeOutlined } from '@ant-design/icons';
+import { Form, Input, Button, InputNumber, Select, Checkbox, Card, Space, Divider, Typography, Progress, message, Row, Col, Switch, Tooltip, Tabs, List, Image, theme, Empty, Popconfirm, Upload } from 'antd';
+import { DownloadOutlined, FileZipOutlined, InfoCircleOutlined, DeleteOutlined, FolderOpenOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
@@ -18,6 +18,7 @@ const Config = () => {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [images, setImages] = useState([]);
   const [activeTab, setActiveTab] = useState('config');
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   useEffect(() => {
     // Load saved config from localStorage
@@ -39,7 +40,10 @@ const Config = () => {
         });
         setStatus(response.data);
       } catch (error) { 
-        console.error('Failed to fetch status', error);
+        // 401 errors are handled by global interceptor in App.jsx
+        if (error.response?.status !== 401) {
+          console.error('Failed to fetch status', error);
+        }
       }
     };
 
@@ -56,8 +60,10 @@ const Config = () => {
       });
       setFolders(response.data);
     } catch (error) {
-      const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
-      message.error(`获取文件夹列表失败: ${errorMsg}`);
+      if (error.response?.status !== 401) {
+        const errorMsg = error.response?.data?.error || error.response?.data?.message || error.message;
+        message.error(`获取文件夹列表失败: ${errorMsg}`);
+      }
     }
   };
 
@@ -70,7 +76,9 @@ const Config = () => {
       setImages(response.data);
       setSelectedFolder(folder);
     } catch (error) {
-      message.error('获取图片列表失败');
+      if (error.response?.status !== 401) {
+        message.error('获取图片列表失败');
+      }
     }
   };
 
@@ -87,7 +95,9 @@ const Config = () => {
         setImages([]);
       }
     } catch (error) {
-      message.error('删除文件夹失败');
+      if (error.response?.status !== 401) {
+        message.error('删除文件夹失败');
+      }
     }
   };
 
@@ -100,6 +110,34 @@ const Config = () => {
   const onValuesChange = (changedValues, allValues) => {
     // Save on every change to prevent data loss on refresh
     localStorage.setItem('wallhaven_config', JSON.stringify(allValues));
+  };
+
+  const handleCustomUpload = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    setUploadLoading(true);
+    try {
+      const tokenStr = localStorage.getItem('token');
+      await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${tokenStr}`
+        }
+      });
+      message.success('图片上传成功');
+      fetchFolders(); // 刷新文件夹列表
+      if (selectedFolder === 'my-uploads') {
+        fetchImages('my-uploads'); // 如果当前就在预览上传文件夹，刷新图片列表
+      }
+    } catch (error) {
+      if (error.response?.status !== 401) {
+        message.error('上传失败: ' + (error.response?.data?.message || error.message));
+      }
+    } finally {
+      setUploadLoading(false);
+    }
+    return false; // 阻止自动上传
   };
 
   const onFinish = async (values) => {
@@ -124,7 +162,9 @@ const Config = () => {
       });
       message.success('下载任务已启动');
     } catch (error) {
-      message.error(error.response?.data?.message || '启动下载失败');
+      if (error.response?.status !== 401) {
+        message.error(error.response?.data?.message || '启动下载失败');
+      }
     } finally {
       setLoading(false);
     }
@@ -153,7 +193,9 @@ const Config = () => {
       link.click();
       message.success('已开始下载压缩包');
     } catch (error) {
-      message.error('创建压缩文件失败');
+      if (error.response?.status !== 401) {
+        message.error('创建压缩文件失败');
+      }
     } finally {
       setZipping(false);
     }
@@ -162,7 +204,7 @@ const Config = () => {
   const configTab = (
     <Row gutter={[24, 24]}>
       <Col xs={24} xl={16}>
-        <Card title={<Title level={4} style={{ margin: 0 }}>Wallhaven 下载配置</Title>} bordered={false}>
+        <Card title={<Title level={4} style={{ margin: 0 }}>Wallhaven 下载配置</Title>} variant="borderless">
           <Form
             form={form}
             layout="vertical"
@@ -404,7 +446,7 @@ const Config = () => {
 
       <Col xs={24} xl={8}>
         <div style={{ position: 'sticky', top: 88 }}>
-          <Card title={<Title level={4} style={{ margin: 0 }}>任务状态与导出</Title>} bordered={false}>
+          <Card title={<Title level={4} style={{ margin: 0 }}>任务状态与导出</Title>} variant="borderless">
             {status ? (
               <>
                 <div style={{ marginBottom: 20 }}>
@@ -474,10 +516,19 @@ const Config = () => {
   );
 
   const previewTab = (
-    <Card bordered={false}>
+    <Card variant="borderless">
       <Row gutter={24}>
         <Col span={6} style={{ borderRight: `1px solid ${token.colorBorderSecondary}`, minHeight: '500px' }}>
-          <Title level={5}><FolderOpenOutlined /> 下载历史</Title>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Title level={5} style={{ margin: 0 }}><FolderOpenOutlined /> 下载历史</Title>
+            <Upload 
+              accept="image/*" 
+              showUploadList={false} 
+              beforeUpload={handleCustomUpload}
+            >
+              <Button size="small" icon={<UploadOutlined />} loading={uploadLoading}>上传</Button>
+            </Upload>
+          </div>
           <List
             dataSource={folders}
             renderItem={item => (

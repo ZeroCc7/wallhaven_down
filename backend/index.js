@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs-extra');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const multer = require('multer');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const { SocksProxyAgent } = require('socks-proxy-agent');
 
@@ -54,11 +55,48 @@ const authenticate = (req, res, next) => {
   });
 };
 
+// Multer Setup for File Uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(DOWNLOAD_BASE_DIR, 'my-uploads');
+    fs.ensureDirSync(uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('只允许上传图片文件！'));
+    }
+  }
+});
+
+// Upload Route
+app.post('/api/upload', authenticate, upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: '未选择文件' });
+  }
+  res.json({ 
+    message: '上传成功', 
+    file: req.file.filename,
+    url: `/downloads/my-uploads/${req.file.filename}`
+  });
+});
+
 // Login Route
 app.post('/api/login', async (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASSWORD) {
-    const token = jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ admin: true }, JWT_SECRET, { expiresIn: '7d' });
     return res.json({ token });
   }
   res.status(401).json({ message: '密码错误' });
